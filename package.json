@@ -1,0 +1,38 @@
+{
+  "name": "pregister",
+  "version": "0.0.2",
+  "description": "register modules with glob patterns",
+  "main": "index.js",
+  "directories": {
+    "example": "example",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xelaz/pregister.git"
+  },
+  "keywords": [
+    "register",
+    "service locator",
+    "required",
+    "loader"
+  ],
+  "author": "xelaz",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/xelaz/pregister/issues"
+  },
+  "homepage": "https://github.com/xelaz/pregister",
+  "dependencies": {
+    "async": "^1.3.0",
+    "debug": "^2.2.0",
+    "glob": "^5.0.12",
+    "mpath": "^0.2.1"
+  },
+  "devDependencies": {
+    "mocha": "^2.2.5"
+  }
+}
