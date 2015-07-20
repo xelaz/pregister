@@ -37,7 +37,7 @@ var Pregister = (function () {
    */
   function addFile(namespace, file, options) {
     var cleanedFile = cleanFile(file, options),
-      module,
+      moduleRequire,
       moduleNamespace,
       orgNamespace,
       moduleKey,
@@ -72,7 +72,7 @@ var Pregister = (function () {
 
     // load module
     try {
-      module = require(cleanedFile);
+      moduleRequire = require(cleanedFile);
     } catch (err) {
       return console.error('PREGISTER Error on require: \n', cleanFile(file, options), '\n\n', err.stack || err);
     }
@@ -85,7 +85,7 @@ var Pregister = (function () {
     });
 
     // load module
-    scope[moduleKey] = module;
+    scope[moduleKey] = moduleRequire;
   }
 
   /**
@@ -98,12 +98,12 @@ var Pregister = (function () {
    * @returns {void}
    */
   function callFile(file, options, done) {
-    var module;
+    var moduleRequire;
     debug('CALL - %s', file);
 
     // load module
     try {
-      module = require(cleanFile(file, options));
+      moduleRequire = require(cleanFile(file, options));
     } catch (err) {
       console.error('PREGISTER Error on require: \n', cleanFile(file, options), '\n\n', err.stack || err);
       return done();
@@ -112,14 +112,14 @@ var Pregister = (function () {
     // with wrapper
     if (options.args && typeof options.args === 'function') {
       try {
-        options.args.apply(undefined, [module, done]);
+        options.args.apply(undefined, [moduleRequire, done]);
       } catch (err) {
         console.error('PREGISTER Error on wrapper: \n', cleanFile(file, options), '\n\n', err.stack || err);
         return done();
       }
     } else {
       try {
-        module.apply && module.apply(undefined, options.args || []);
+        moduleRequire.apply && moduleRequire.apply(undefined, options.args || []);
       } catch (err) {
         console.error('PREGISTER ERROR apply: \n', cleanFile(file, options), '\n\n', err.stack || err);
         return done();
