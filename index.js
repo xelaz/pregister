@@ -36,31 +36,25 @@ var Pregister = (function () {
    * @returns {void}
    */
   function addFile(namespace, file, options) {
-    var cleanedFile = cleanFile(file, options), module, moduleNamespace;
+    var cleanedFile = cleanFile(file, options),
+      module,
+      moduleNamespace,
+      orgNamespace,
+      moduleKey,
+      scope = Pregister; // use global scope
 
-    // load module
-    try {
-      module = require(cleanedFile);
-    } catch (err) {
-      return console.error('PREGISTER Error on require: \n', cleanFile(file, options), '\n\n', err.stack || err);
-    }
+    moduleNamespace = file
+      .replace(/(\/)/g, '.')                                       // replace / => .
+      .replace(/\.\w+$/, '')                                       // cut extension .js
+      .replace(/\.index$/, '')                                     // cut index as module name
+      .replace(new RegExp('(.*)\\.?' + namespace, 'i'), namespace) // cut sufix
+      .split('.');
 
-    if(!module.namespace) {
-      var fullN = file
-        .replace(/(\/)/g, '.')
-        .replace(/\.\w+$/, '')
-        .replace(/\.index$/, '')
-        .replace(new RegExp('(.*)\\.?' + namespace, 'i'), namespace);
+    orgNamespace = moduleNamespace.slice(0);
 
-      // use global scope
-      var scope = Pregister;
-      moduleNamespace = fullN.split('.');
-    } else {
-      moduleNamespace = module.namespace.split('.');
-    }
-
+    // get last node and
     // transform my-function to myFunction
-    var moduleKey = moduleNamespace.pop().replace(/-([a-z])/g, function (g) {
+    moduleKey = moduleNamespace.pop().replace(/-([a-z])/g, function (g) {
       return g[1].toUpperCase();
     });
 
@@ -73,18 +67,25 @@ var Pregister = (function () {
     // prevent duplicate register module
     if (scope[moduleKey]) {
       debug('PregisterModuleExist: \n' +  moduleKey + '::' + cleanedFile);
-      return
+      return;
+    }
+
+    // load module
+    try {
+      module = require(cleanedFile);
+    } catch (err) {
+      return console.error('PREGISTER Error on require: \n', cleanFile(file, options), '\n\n', err.stack || err);
     }
 
     debug({
       cleanedFile:     cleanedFile,
-      fullN:           fullN,
+      orgNamespace:    orgNamespace,
       moduleNamespace: moduleNamespace,
       moduleKey:       moduleKey
     });
 
     // load module
-    scope[moduleKey] = require(cleanedFile);
+    scope[moduleKey] = module;
   }
 
   /**
