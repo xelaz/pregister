@@ -130,19 +130,29 @@ var Pregister = (function () {
     }
   }
 
+  /**
+   *
+   * @param {*}      part        - register module in Pregister scope
+   * @param {String} [namespace] - if not set, then use root node
+   */
+  function register(part, namespace) {
+
+  }
+
+  // create immutable methods
   return Object.create(Object.prototype, {
 
-    register: {
-      /**
-       * @function
-       * @public
-       * @access public
-       *
-       * @param {String}          namespace
-       * @param {String}          pattern
-       * @param {Object|Function} options
-       * @param {Function|null}   done
-       */
+    /**
+     * @function
+     * @public
+     * @access public
+     *
+     * @param {String}          namespace
+     * @param {String}          pattern
+     * @param {Object|Function} [options]
+     * @param {Function}        [done]
+     */
+    require: {
       value: function (namespace, pattern, options, done) {
         if (typeof options === 'function') {
           done = options;
@@ -163,17 +173,29 @@ var Pregister = (function () {
      * @public
      * @access public
      *
+     * @param {*}          part
+     * @param {String}     namespace
+     */
+    register: {
+      value: register
+    },
+
+    /**
+     * @function
+     * @public
+     * @access public
+     *
      * @param {String} namespace
      */
-    resolve: {
+    retrieve: {
       value: function (namespace, def) {
         var res = mpath.get(namespace, Pregister);
 
-        if (!res) {
+        if (!res && !def) {
           throw new Error('PregisterResolveError: ' + namespace);
         }
 
-        return res || def || undefined;
+        return res || def;
       }
     },
 
