@@ -11,13 +11,6 @@ domain.on('error', function (err) {
   console.error('PregisterDomainError: \n', err.stack || err || '');
 });
 
-/**
- * @module {Object} Pregister
- *
- * @method require
- * @method register
- * @method retrieve
- */
 var Pregister = (function () {
   /**
    *
@@ -42,40 +35,16 @@ var Pregister = (function () {
    * @access private
    * @returns {void}
    */
-  function addFile(namespace, file, options) {
+  function registerFile(namespace, file, options) {
     var cleanedFile = cleanFile(file, options),
       moduleRequire,
-      moduleNamespace,
-      orgNamespace,
-      moduleKey,
-      scope = Pregister; // use global scope
+      moduleNamespace;
 
     moduleNamespace = file
-      .replace(/(\/)/g, '.')                                       // replace / => .
-      .replace(/\.\w+$/, '')                                       // cut extension .js
-      .replace(/\.index$/, '')                                     // cut index as module name
-      .replace(new RegExp('(.*)\\.?' + namespace, 'i'), namespace) // cut sufix
-      .split('.');
-
-    orgNamespace = moduleNamespace.slice(0);
-
-    // get last node and
-    // transform my-function to myFunction
-    moduleKey = moduleNamespace.pop().replace(/-([a-z])/g, function (g) {
-      return g[1].toUpperCase();
-    });
-
-    // create object path
-    moduleNamespace.forEach(function (node) {
-      scope[node] = scope[node] || {};
-      scope = scope[node];
-    });
-
-    // prevent duplicate register module
-    if (scope[moduleKey]) {
-      debug('PregisterModuleExist: \n' +  moduleKey + '::' + cleanedFile);
-      return;
-    }
+      .replace(/(\/)/g, '.')                                        // replace / => .
+      .replace(/\.\w+$/, '')                                        // cut extension .js
+      .replace(/\.index$/, '')                                      // cut index as module name
+      .replace(new RegExp('(.*)\\.?' + namespace, 'i'), namespace); // cut sufix
 
     // load module
     try {
@@ -84,15 +53,7 @@ var Pregister = (function () {
       return console.error('PREGISTER Error on require: \n', cleanFile(file, options), '\n\n', err.stack || err);
     }
 
-    debug({
-      cleanedFile:     cleanedFile,
-      orgNamespace:    orgNamespace,
-      moduleNamespace: moduleNamespace,
-      moduleKey:       moduleKey
-    });
-
-    // load module
-    scope[moduleKey] = moduleRequire;
+    register(moduleNamespace, moduleRequire, options);
   }
 
   /**
@@ -141,79 +102,94 @@ var Pregister = (function () {
    *
    * @param {*}      part        - register module in Pregister scope
    * @param {String} [namespace] - if not set, then use root node
+   * @param {Object} [options]
+   *
+   * @private
+   * @access private
+   * @returns {void}
    */
-  function register(part, namespace) {
+  function register(namespace, part, options) {
+    var scope = Pregister, moduleName, moduleNamespace;
 
+    moduleNamespace = namespace.split('.');
+
+    // get last node and
+    // transform my-function to myFunction
+    moduleName = moduleNamespace.pop().replace(/-([a-z])/g, function (g) {
+      return g[1].toUpperCase();
+    });
+
+    // create object path
+    moduleNamespace.forEach(function (node) {
+      scope[node] = scope[node] || {};
+      scope = scope[node];
+    });
+
+    // prevent duplicate register module
+    if (scope[moduleName]) {
+      debug('PregisterModuleExist: \n' +  moduleName);
+      return;
+    }
+
+    debug({
+      namespace:       namespace,
+      moduleNamespace: moduleNamespace,
+      moduleKey:       moduleName
+    });
+
+    // load module
+    scope[moduleName] = part;
   }
 
   // create immutable methods
   return Object.create(Object.prototype, {
 
+    /**
+     * @function
+     * @public
+     * @access public
+     *
+     * @param {String}          namespace
+     * @param {String}          pattern
+     * @param {Object|Function} [options]
+     * @param {Function}        [done]
+     */
     require: {
-
-      /**
-       * @function require
-       * @public
-       * @access public
-       *
-       * @param {String}   pattern
-       * @param {String}   namespace
-       * @param {Object}   [options]
-       * @param {Function} [done]
-       */
       value: function (pattern, namespace, options, done) {
         if (typeof options === 'function') {
           done = options;
           options = {};
         }
 
-        var isRequireable = true;
-
-        try {
-          var resolve = require.resolve(pattern);
-
-        } catch(error) {
-          isRequireable = false;
-        }
-
-        if(isRequireable) {
-          register(require(pattern), namespace);
-          return;
-        }
-
-        console.log('Resolve:', resolve);
-
-        /*async.each(glob.sync(pattern, options) || [], function (file, done) {
+        async.each(glob.sync(pattern, options) || [], function (file, done) {
           domain.run(function () {
-            addFile(namespace, file, options);
+            registerFile(namespace, file, options);
             done();
           });
-        }, done);*/
+        }, done);
       }
     },
 
+    /**
+     * @function
+     * @public
+     * @access public
+     *
+     * @param {*}          part
+     * @param {String}     namespace
+     */
     register: {
-
-      /**
-       * @function register
-       * @public
-       * @access public
-       *
-       * @param {*}          part
-       * @param {String}     namespace
-       */
       value: register
     },
 
-    retrieve: {
-
-      /**
-       * @function retrieve
-       * @public
-       * @access public
-       *
-       * @param {String} namespace
-       */
+    /**
+     * @function
+     * @public
+     * @access public
+     *
+     * @param {String} namespace
+     */
+    resolve: {
       value: function (namespace, def) {
         var res = mpath.get(namespace, Pregister);
 
@@ -250,7 +226,4 @@ var Pregister = (function () {
   });
 })();
 
-/**
- * @type Pregister
- */
 module.exports = Pregister;
