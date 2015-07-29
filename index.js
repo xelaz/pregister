@@ -1,5 +1,13 @@
 "use strict";
 
+/**
+ * Callback as node pattern callbacks.
+ *
+ * @callback callbackPattern
+ *
+ * @returns {void}
+ */
+
 var glob = require('glob'),
   path = require('path'),
   mpath = require('mpath'),
@@ -15,7 +23,8 @@ var Pregister = (function () {
   /**
    *
    * @param {String} file
-   * @param {Object} options
+   * @param {Object} [options]
+   * @param {String} [options.cwd]
    * @private
    * @access private
    * @returns {*}
@@ -33,7 +42,6 @@ var Pregister = (function () {
    * @param {Object} options
    * @private
    * @access private
-   * @returns {void}
    */
   function registerFile(namespace, file, options) {
     var cleanedFile = cleanFile(file, options),
@@ -49,18 +57,17 @@ var Pregister = (function () {
     // load module
     try {
       moduleRequire = require(cleanedFile);
+      register(moduleNamespace, moduleRequire);
     } catch (err) {
-      return console.error('PREGISTER Error on require: \n', cleanFile(file, options), '\n\n', err.stack || err);
+      console.error('PREGISTER Error on require: \n', cleanFile(file, options), '\n\n', err.stack || err);
     }
-
-    register(moduleNamespace, moduleRequire, options);
   }
 
   /**
    *
    * @param {String} file
    * @param {Object} options
-   * @param {Function} done
+   * @param {callbackPattern} done
    * @private
    * @access private
    * @returns {void}
@@ -102,14 +109,17 @@ var Pregister = (function () {
    *
    * @param {*}      part        - register module in Pregister scope
    * @param {String} [namespace] - if not set, then use root node
-   * @param {Object} [options]
    *
    * @private
    * @access private
    * @returns {void}
    */
-  function register(namespace, part, options) {
+  function register(namespace, part) {
     var scope = Pregister, moduleName, moduleNamespace;
+
+    if(!namespace) {
+      throw new Error('Namespace can not be empty');
+    }
 
     moduleNamespace = namespace.split('.');
 
@@ -155,7 +165,26 @@ var Pregister = (function () {
      * @param {Function}        [done]
      */
     require: {
-      value: function (pattern, namespace, options, done) {
+      value: function (namespace, pattern, options, done) {
+        var resolvable;
+
+        if(typeof pattern === 'object') {
+          register(namespace, pattern);
+          return;
+        }
+
+        try{
+          require.resolve(pattern);
+          resolvable = true;
+        } catch(error) {
+          resolvable = false;
+        }
+
+        if(resolvable) {
+          register(namespace, require(pattern));
+          return;
+        }
+
         if (typeof options === 'function') {
           done = options;
           options = {};
