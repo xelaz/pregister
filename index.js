@@ -20,6 +20,9 @@ domain.on('error', function (err) {
 });
 
 var Pregister = (function () {
+
+  var bucket = {};
+
   /**
    *
    * @param {String} file
@@ -107,15 +110,18 @@ var Pregister = (function () {
 
   /**
    *
-   * @param {*}      part        - register module in Pregister scope
+   * @param {*}      part        - register module in bucket scope
    * @param {String} [namespace] - if not set, then use root node
    *
    * @private
    * @access private
+   *
+   * @throws Error
+   *
    * @returns {void}
    */
   function register(namespace, part) {
-    var scope = Pregister, moduleName, moduleNamespace;
+    var scope = bucket, moduleName, moduleNamespace;
 
     if(!namespace) {
       throw new Error('Namespace can not be empty');
@@ -138,24 +144,21 @@ var Pregister = (function () {
     // prevent duplicate register module
     if (scope[moduleName]) {
       debug('PregisterModuleExist: \n' +  moduleName);
-      return;
+    } else {
+      debug({
+        namespace:       namespace,
+        moduleNamespace: moduleNamespace,
+        moduleKey:       moduleName
+      });
+
+      // load module
+      scope[moduleName] = part;
     }
-
-    debug({
-      namespace:       namespace,
-      moduleNamespace: moduleNamespace,
-      moduleKey:       moduleName
-    });
-
-    // load module
-    scope[moduleName] = part;
   }
 
-  // create immutable methods
-  return Object.create(Object.prototype, {
-
+  return {
     /**
-     * @function
+     * @method
      * @public
      * @access public
      *
@@ -164,95 +167,89 @@ var Pregister = (function () {
      * @param {Object|Function} [options]
      * @param {Function}        [done]
      */
-    require: {
-      value: function (namespace, pattern, options, done) {
-        var resolvable;
+    require: function (namespace, pattern, options, done) {
+      var resolvable;
 
-        if(typeof pattern === 'object') {
-          register(namespace, pattern);
-          return;
-        }
-
-        try{
-          require.resolve(pattern);
-          resolvable = true;
-        } catch(error) {
-          resolvable = false;
-        }
-
-        if(resolvable) {
-          register(namespace, require(pattern));
-          return;
-        }
-
-        if (typeof options === 'function') {
-          done = options;
-          options = {};
-        }
-
-        async.each(glob.sync(pattern, options) || [], function (file, done) {
-          domain.run(function () {
-            registerFile(namespace, file, options);
-            done();
-          });
-        }, done);
+      if(typeof pattern === 'object') {
+        register(namespace, pattern);
+        return;
       }
+
+      try{
+        require.resolve(pattern);
+        resolvable = true;
+      } catch(error) {
+        resolvable = false;
+      }
+
+      if(resolvable) {
+        register(namespace, require(pattern));
+        return;
+      }
+
+      if (typeof options === 'function') {
+        done = options;
+        options = {};
+      }
+
+      async.each(glob.sync(pattern, options) || [], function (file, done) {
+        domain.run(function () {
+          registerFile(namespace, file, options);
+          done();
+        });
+      }, done);
     },
 
     /**
-     * @function
+     * @method
      * @public
      * @access public
      *
      * @param {*}          part
      * @param {String}     namespace
      */
-    register: {
-      value: register
+    register: function(namespace, part) {
+      return register(namespace, part);
     },
 
     /**
-     * @function
+     * @method
      * @public
      * @access public
      *
-     * @param {String} namespace
+     * @param {String|undefined} namespace
+     * @param {*|undefined}     [def]     - dafault
      */
-    resolve: {
-      value: function (namespace, def) {
-        var res = mpath.get(namespace, Pregister);
+    resolve: function (namespace, def) {
+      var res = (!namespace) ? bucket : mpath.get(namespace, bucket);
 
-        if (!res && !def) {
-          throw new Error('PregisterResolveError: ' + namespace);
-        }
-
-        return res || def;
+      if (!res && !def) {
+        throw new Error('PregisterResolveError: ' + namespace);
       }
+
+      return res || def;
     },
 
-    call: {
-      /**
-       *
-       * @function
-       *
-       * @public
-       * @access private
-       *
-       * @param {String}   pattern
-       * @param {Object}   options
-       * @param {Function} done
-       */
-      value: function (pattern, options, done) {
-        async.each(
-          glob.sync(pattern, options) || [], function (file, done) {
-            domain.run(function () {
-              callFile(file, options, done);
-            });
-          }, done || function () {
+    /**
+     * @method
+     *
+     * @public
+     * @access private
+     *
+     * @param {String}   pattern
+     * @param {Object}   options
+     * @param {Function} [done]
+     */
+    call: function (pattern, options, done) {
+      async.each(
+        glob.sync(pattern, options) || [], function (file, done) {
+          domain.run(function () {
+            callFile(file, options, done);
           });
-      }
+        }, done || function () {
+        });
     }
-  });
+  };
 })();
 
 module.exports = Pregister;
