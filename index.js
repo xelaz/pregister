@@ -171,8 +171,7 @@ var Pregister = (function () {
       var resolvable;
 
       if(typeof pattern === 'object') {
-        register(namespace, pattern);
-        return;
+        return register(namespace, pattern);
       }
 
       try{
@@ -183,8 +182,7 @@ var Pregister = (function () {
       }
 
       if(resolvable) {
-        register(namespace, require(pattern));
-        return;
+        return register(namespace, require(pattern));
       }
 
       if (typeof options === 'function') {
@@ -228,6 +226,35 @@ var Pregister = (function () {
       }
 
       return res || def;
+    },
+
+    /**
+     *
+     * @param {String} namespace
+     *
+     * @returns {Pregister}
+     */
+    remove: function(namespace) {
+      var path = namespace.split('.');
+      var last = path.pop();
+      var data = bucket;
+
+      path.forEach(function(path) {
+        data = data[path];
+      });
+
+      delete data[last];
+
+      return this;
+    },
+
+    /**
+     * @returns {Pregister}
+     */
+    reset: function() {
+      bucket = {};
+
+      return this;
     },
 
     /**
