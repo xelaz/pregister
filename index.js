@@ -84,16 +84,16 @@ var Pregister = (function () {
     }
 
     // with wrapper
-    if (moduleRequire && options.invoke && typeof options.invoke === 'function') {
+    if (moduleRequire && typeof options.invoke === 'function') {
       try {
         options.invoke.call(undefined, moduleRequire);
       } catch (err) {
         console.error('PREGISTER Error on wrapper: \n', cleanFile(file, options), '\n\n', err.stack || err);
       }
-    } else if(moduleRequire && typeof options.args === 'array') {
+    } else if(moduleRequire) {
       try {
-        var args = options.args.concat();
-        moduleRequire.apply && moduleRequire.apply(undefined, args || []);
+        var args = (Array.isArray(options.args) && options.args.concat()) || [];
+        moduleRequire.apply && moduleRequire.apply(undefined, args);
       } catch (err) {
         console.error('PREGISTER ERROR apply: \n', cleanFile(file, options), '\n\n', err.stack || err);
       }
@@ -101,7 +101,6 @@ var Pregister = (function () {
     moduleRequire = null;
     // all is okay
     done();
-
   }
 
   /**
