@@ -12,12 +12,7 @@ var glob = require('glob'),
   path = require('path'),
   mpath = require('mpath'),
   async = require('async'),
-  debug = require('debug')('pregister'),
-  domain = require('domain').create();
-
-domain.on('error', function (err) {
-  console.error('PregisterDomainError: \n', err.stack || err || '');
-});
+  debug = require('debug')('pregister');
 
 var Pregister = (function () {
 
@@ -64,6 +59,8 @@ var Pregister = (function () {
     } catch (err) {
       console.error('PREGISTER Error on require: \n', cleanFile(file, options), '\n\n', err.stack || err);
     }
+
+    moduleRequire = null;
   }
 
   /**
@@ -84,28 +81,27 @@ var Pregister = (function () {
       moduleRequire = require(cleanFile(file, options));
     } catch (err) {
       console.error('PREGISTER Error on require: \n', cleanFile(file, options), '\n\n', err.stack || err);
-      return done();
     }
 
     // with wrapper
-    if (options.args && typeof options.args === 'function') {
+    if (moduleRequire && options.invoke && typeof options.invoke === 'function') {
       try {
-        options.args.apply(undefined, [moduleRequire, done]);
+        options.invoke.call(undefined, moduleRequire);
       } catch (err) {
         console.error('PREGISTER Error on wrapper: \n', cleanFile(file, options), '\n\n', err.stack || err);
-        return done();
       }
-    } else {
+    } else if(moduleRequire && typeof options.args === 'array') {
       try {
-        moduleRequire.apply && moduleRequire.apply(undefined, options.args || []);
+        var args = options.args.concat();
+        moduleRequire.apply && moduleRequire.apply(undefined, args || []);
       } catch (err) {
         console.error('PREGISTER ERROR apply: \n', cleanFile(file, options), '\n\n', err.stack || err);
-        return done();
       }
-
-      // all is okay
-      done();
     }
+    moduleRequire = null;
+    // all is okay
+    done();
+
   }
 
   /**
@@ -191,10 +187,8 @@ var Pregister = (function () {
       }
 
       async.each(glob.sync(pattern, options) || [], function (file, done) {
-        domain.run(function () {
-          registerFile(namespace, file, options);
-          done();
-        });
+        registerFile(namespace, file, options);
+        done();
       }, done);
     },
 
@@ -270,9 +264,7 @@ var Pregister = (function () {
     call: function (pattern, options, done) {
       async.each(
         glob.sync(pattern, options) || [], function (file, done) {
-          domain.run(function () {
-            callFile(file, options, done);
-          });
+          callFile(file, options, done);
         }, done || function () {
         });
     }
