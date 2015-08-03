@@ -46,11 +46,7 @@ var Pregister = (function () {
       moduleRequire,
       moduleNamespace;
 
-    moduleNamespace = file
-      .replace(/(\/)/g, '.')                                        // replace / => .
-      .replace(/\.\w+$/, '')                                        // cut extension .js
-      .replace(/\.index$/, '')                                      // cut index as module name
-      .replace(new RegExp('(.*)\\.?' + namespace, 'i'), namespace); // cut sufix
+    moduleNamespace = Pregister.file2namespace(file, namespace);  // cut sufix
 
     // load module
     try {
@@ -266,6 +262,21 @@ var Pregister = (function () {
           callFile(file, options, done);
         }, done || function () {
         });
+    },
+
+    /**
+     *
+     * @param {String} file
+     * @param {String} namespace
+     */
+    file2namespace: function(file, namespace) {
+      var regexName = '(' + namespace.replace('.', ')?(') + ')';
+
+      return (namespace + '.' + file
+        .replace(/(\/)/g, '.')                                        // replace / => .
+        .replace(/\.\w+$/, '')                                        // cut extension .js
+        .replace(/\.index$/, '')                                      // cut index as module name
+        .replace(new RegExp('(.*)\\.?' + regexName + '\\.?', 'i'), '')).replace(/\.?$/, '');
     }
   };
 })();
