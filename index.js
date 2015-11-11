@@ -143,7 +143,7 @@ var Pregister = (function () {
       });
 
       // load module
-      scope[moduleName] = part;
+      scope[moduleName] = part.default || part;
     }
   }
 
