@@ -75,6 +75,7 @@ var Pregister = (function () {
     // load module
     try {
       moduleRequire = require(cleanFile(file, options));
+      moduleRequire = moduleRequire.default || moduleRequire;
     } catch (err) {
       console.error('PREGISTER Error on require: \n', cleanFile(file, options), '\n\n', err.stack || err);
     }
