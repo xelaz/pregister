@@ -271,13 +271,14 @@ var Pregister = (function () {
      * @param {String} namespace
      */
     file2namespace: function(file, namespace) {
-      var regexName = '(' + namespace.replace('.', ')?(') + ')';
+      var path = file
+        .replace(/(\/)/g, '.')   // replace / => .
+        .replace(/\.\w+$/, '')   // cut extension .js
+        .replace(/\.index$/, '') // remove default index module name
+        .replace(/^\.|\.$/, ''); // trim .
 
-      return (namespace + '.' + file
-        .replace(/(\/)/g, '.')                                        // replace / => .
-        .replace(/\.\w+$/, '')                                        // cut extension .js
-        .replace(/\.index$/, '')                                      // cut index as module name
-        .replace(new RegExp('(.*)\\.?' + regexName + '\\.?', 'i'), '')).replace(/\.?$/, '');
+      return (namespace + '.' + path.replace(new RegExp('(.*)\\.+' + namespace, 'i'), namespace))
+        .replace(new RegExp('\\.' + namespace), '').replace(/\.{2,}/, '.');
     }
   };
 })();
