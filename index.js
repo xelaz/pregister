@@ -37,26 +37,22 @@ var Pregister = (function () {
    *
    * @param {String} namespace
    * @param {String} file
-   * @param {Object} options
+   * @param {Object} [options]
    * @private
    * @access private
    */
   function registerFile(namespace, file, options) {
     var cleanedFile = cleanFile(file, options),
-      moduleRequire,
       moduleNamespace;
 
     moduleNamespace = Pregister.file2namespace(file, namespace);  // cut sufix
 
     // load module
     try {
-      moduleRequire = require(cleanedFile);
-      register(moduleNamespace, moduleRequire);
+      register(moduleNamespace, require(cleanedFile), options);
     } catch (err) {
-      console.error('PREGISTER Error on require: \n', cleanFile(file, options), '\n\n', err.stack || err);
+      console.error('PREGISTER Error on require: \n', cleanedFile, '\n\n', err.stack || err);
     }
-
-    moduleRequire = null;
   }
 
   /**
@@ -97,13 +93,15 @@ var Pregister = (function () {
     }
     moduleRequire = null;
     // all is okay
-    done();
+    done && done();
   }
 
   /**
    *
-   * @param {*}      part        - register module in bucket scope
-   * @param {String} [namespace] - if not set, then use root node
+   * @param {String}   namespace           - if not set, then use root node
+   * @param {*}        part                - register module in bucket scope
+   * @param {Object}   [options]           - Call Module as Singleton
+   * @param {Function} [options.singleton] - Call Module as Singleton
    *
    * @private
    * @access private
@@ -112,7 +110,7 @@ var Pregister = (function () {
    *
    * @returns {void}
    */
-  function register(namespace, part) {
+  function register(namespace, part, options) {
     var scope = bucket, moduleName, moduleNamespace;
 
     if(!namespace) {
@@ -123,26 +121,27 @@ var Pregister = (function () {
 
     // get last node and
     // transform my-function to myFunction
-    moduleName = moduleNamespace.pop().replace(/-([a-z])/g, function (g) {
-      return g[1].toUpperCase();
-    });
+    moduleName = moduleNamespace.pop().replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); });
 
     // create object path
     moduleNamespace.forEach(function (node) {
-      scope[node] = scope[node] || {};
-      scope = scope[node];
+      scope = scope[node] = scope[node] || {};
     });
 
     // prevent duplicate register module
     if (scope[moduleName]) {
-      debug('PregisterModuleExist: \n' +  moduleName);
-    } else {
-      debug({
-        namespace:       namespace,
-        moduleNamespace: moduleNamespace,
-        moduleKey:       moduleName
-      });
+      throw new Error('Module "' + moduleName + '" in Namespace "' + namespace + '" exist');
+    }
 
+    debug({
+      namespace:       namespace,
+      moduleNamespace: moduleNamespace,
+      moduleKey:       moduleName
+    });
+
+    if(options && options.singleton) {
+      scope[moduleName] = options.singleton(part.default || part);
+    } else {
       // load module
       scope[moduleName] = part.default || part;
     }
@@ -156,14 +155,20 @@ var Pregister = (function () {
      *
      * @param {String}          namespace
      * @param {String}          pattern
-     * @param {Object|Function} [options]
+     * @param {Object|Function} [options] - glob options or intern options
      * @param {Function}        [done]
      */
     require: function (namespace, pattern, options, done) {
       var resolvable;
+      options = options || {};
+
+      if (typeof options === 'function') {
+        done = options;
+        options = {};
+      }
 
       if(typeof pattern === 'object') {
-        return register(namespace, pattern);
+        return register(namespace, pattern, options);
       }
 
       try{
@@ -174,12 +179,7 @@ var Pregister = (function () {
       }
 
       if(resolvable) {
-        return register(namespace, require(pattern));
-      }
-
-      if (typeof options === 'function') {
-        done = options;
-        options = {};
+        return register(namespace, require(pattern), options);
       }
 
       async.each(glob.sync(pattern, options) || [], function (file, done) {
@@ -193,11 +193,13 @@ var Pregister = (function () {
      * @public
      * @access public
      *
-     * @param {*}          part
-     * @param {String}     namespace
+     * @param {String}   namespace
+     * @param {*}        part
+     * @param {Object}   [options]
+     * @param {Function} [options.singleton]
      */
-    register: function(namespace, part) {
-      return register(namespace, part);
+    register: function(namespace, part, options) {
+      return register(namespace, part, options);
     },
 
     /**
@@ -253,16 +255,17 @@ var Pregister = (function () {
      * @public
      * @access private
      *
-     * @param {String}   pattern
-     * @param {Object}   options
-     * @param {Function} [done]
+     * @param {String}   pattern       - glob pattern
+     * @param {Object}   options       - glob options
+     * @param {String}   [options.cwd] - cwd path
+     * @param {Function} [done]        - callback
      */
     call: function (pattern, options, done) {
       async.each(
         glob.sync(pattern, options) || [], function (file, done) {
           callFile(file, options, done);
-        }, done || function () {
-        });
+        }, done || function () {}
+      );
     },
 
     /**

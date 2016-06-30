@@ -11,6 +11,7 @@ describe('Namespace', function() {
     assert.equal(Pregister.file2namespace('root/service/db/index.js', 'service.db'), 'service.db');
     assert.equal(Pregister.file2namespace('root/service/db.js', 'service.db'), 'service.db');
     assert.equal(Pregister.file2namespace('/root/service/db.js', 'service.db'), 'service.db');
+    assert.equal(Pregister.file2namespace('/root/service/db.js', 'service'), 'service.db');
 
     assert.equal(Pregister.file2namespace('service/dbservice/index.js', 'service'), 'service.dbservice');
     assert.equal(Pregister.file2namespace('root/dbservice/index.js', 'service'), 'service.root.dbservice');
